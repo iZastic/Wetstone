@@ -1,56 +1,58 @@
-name: Release on Thunderstore, NuGet
+name: Build
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  SOLUTION_PATH: Wetstone.sln
+  PACKAGE_PATH: package
+  ZIP_PATH: package/Wetstone.zip
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+
     steps:
-      # clone repo
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+    - name: Checkout
+      uses: actions/checkout@v3
 
-      # install gitversion
-      - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0.9.7
-        with:
-          versionSpec: "5.x"
+    - name: Install .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 6.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
 
-      # determine version
-      - name: Determine Version
-        uses: gittools/actions/gitversion/execute@v0.9.7
+    - name: Execute unit tests
+      run: dotnet test ${{ env.SOLUTION_PATH }}
+    
+    - name: Build
+      run: dotnet build -c release --no-restore ${{ env.SOLUTION_PATH }}
+      
+    - name: Create Zip File
+      uses: papeloto/action-zip@v1
+      with:
+        files: ${{ env.PACKAGE_PATH }}
+        dest: ${{ env.ZIP_PATH }}
 
-      # setup nuget.exe
-      - name: Setup NuGet.exe for use with actions
-        uses: NuGet/setup-nuget@v1.0.5
-        with:
-          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+    - name: Release
+      if: ${{ endsWith(github.ref_name, '-pre') }}
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        tag_name: Wetstone-${{ github.ref_name }}
+        prerelease: true
+        body: Automated release of ${{ github.ref_name }}
+        files: ${{ env.ZIP_PATH }}
 
-      # build project
-      - run: dotnet build . --configuration Release --output ./ReleaseOutput -p:Version=$GitVersion_MajorMinorPatch
-
-      # retain only wetstone files
-      - name: Cleanup Release Output
-        run: |
-          find ./ReleaseOutput ! -name Wetstone.dll ! -name Wetstone.xml ! -name Wetstone*.nupkg -type f -delete
-
-      # publish to nuget
-      - name: Publish to NuGet
-        run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json'
-
-      # install tcli
-      - name: Install TCLI
-        run: dotnet tool install --global tcli
-
-      # filter out files we don't want in our release
-      - name: Cleanup Release Output for TS Release
-        run: rm ReleaseOutput/*.nupkg
-
-      # publish
-      - name: Publish to thunderstore.io
-        run: tcli publish --token ${{ secrets.THUNDERSTORE_DEV_API_KEY }} --package-version ${{ env.GitVersion_MajorMinorPatch }} --config-path ./thunderstore.toml
+    - name: Release
+      if: ${{ !endsWith(github.ref_name, '-pre') }}
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        tag_name: Wetstone-${{ github.ref_name }}
+        body: Automated release of ${{ github.ref_name }}
+        files: ${{ env.ZIP_PATH }}

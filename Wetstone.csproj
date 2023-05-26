@@ -12,6 +12,7 @@
 
     <AssemblyName>Wetstone</AssemblyName>
     <Description>Plugin framework and general utilities for V Rising mods.</Description>
+    <PackageProjectUrl>https://github.com/molenzwiebel/Wetstone</PackageProjectUrl>
 
     <BepInExPluginGuid>xyz.molenzwiebel.wetstone</BepInExPluginGuid>
     <Version>1.3.0</Version>
@@ -34,4 +35,11 @@
     <PackageReference Include="Fody" Version="6.6.2" />
     <PackageReference Include="System.Text.Json" Version="6.0.7" />
   </ItemGroup>
+
+  <Import Project="$(MSBuildProjectDirectory)\Manifest.props" />
+  
+  <Target Name="CopyPackageFiles" AfterTargets="Build">
+    <Copy ContinueOnError="true" SourceFiles="$(TargetDir)$(ProjectName).dll;$(IntermediateOutputPath)manifest.json;$(ProjectDir)icon.png;$(ProjectDir)README.md" DestinationFolder="$(ProjectDir)package" />
+    <Message Text="Copied build files to package directory" Importance="High" />
+  </Target>
 </Project>
