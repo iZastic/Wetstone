@@ -1,5 +1,6 @@
 using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
+using ProjectM;
 using Wetstone.API;
 
 namespace Wetstone.Hooks;
@@ -53,8 +54,7 @@ static class OnInitialize
 
     private static class ServerDetours
     {
-        // use of string here is intentional, avoids issues if the class somehow does not exist
-        [HarmonyPatch("ProjectM.GameBootstrap", "Start")]
+        [HarmonyPatch(typeof(GameBootstrap), nameof(GameBootstrap.Start))]
         [HarmonyPostfix]
         public static void Initialize()
         {
@@ -64,8 +64,7 @@ static class OnInitialize
 
     private static class ClientDetours
     {
-        // use of string here is intentional, avoids issues if the class somehow does not exist
-        [HarmonyPatch("ProjectM.CustomWorldSpawning", "AddSystemsToWorld")]
+        [HarmonyPatch(typeof(CustomWorldSpawning), nameof(CustomWorldSpawning.AddSystemsToWorld))]
         [HarmonyPostfix]
         public static void Initialize()
         {
